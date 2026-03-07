@@ -12,4 +12,4 @@ Create a main.c near the toolchain file.
 
 Open a terminal, type cd ToolchainCPU5/
 
-If you are on linux, type make or ./CompilCommande.bat on windows
+If you are on linux, modify the Makefile with your path to files and type make or ./CompilCommande.bat {output_file_name_no_extension} {input_file_name.c} on windows
