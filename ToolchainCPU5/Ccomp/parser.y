@@ -35,7 +35,7 @@ extern FILE *yyin;
 
 typedef struct {
     char name[64];
-    char reg;
+    int reg;
     int addr;
     int type;
 } Var;
@@ -237,7 +237,7 @@ int get_reg_addr(const char* name) {
     return -1;
 }
 
-void convert_str_intlist(char* list, int* intlist){
+int convert_str_intlist(char* list, int* intlist){
     int strlen_list = strlen(list);
     char buf[32];
     int num_cnt = 0;
@@ -257,12 +257,7 @@ void convert_str_intlist(char* list, int* intlist){
     intlist[num_cnt]=atoi(buf);
     num_cnt++;
     intlist[num_cnt]='\0';
-}
-
-int intstrlen(int* intlist){
-    int i=0;
-    while(intlist[i]!='\0')i++;
-    return i;
+    return num_cnt;
 }
 
 int label_stack[255];
@@ -302,7 +297,7 @@ int pop_label(){
 %token ASSIGN
 %token GPI0 GPI1 GPO0 GPO1 SPI CONFSPI UART BAUDL BAUDH STATUS CONFINT
 %token LPAREN RPAREN LBRACE RBRACE SEMICOLON COMMA LCOMMENT RCOMMENT LBRACKET RBRACKET QUOTE
-%token JMCARRY U L S
+%token U L S
 
 %type <reg> comparable_expression
 %type <reg> simple_expression
@@ -519,7 +514,7 @@ arguments:
         }
         fprintf(out, "LOAD R%d 0 ; %s end\n", r, c_name);
         fprintf(out, "OUTI R%d 0x%04x\n", r, ad+i);
-        fprintf(out, "LOAD R%d 0x%04x ; %s\n", r, ad, $1);
+        fprintf(out, "LOAD R%d 0x%04x ; loading %s\n", r, ad, vars[varindex].name);
         fprintf(out, "OUTI R%d 0x%04x ; argument %d\n", r, func[tmp].arg[Arg_set].addr, Arg_set);
         Arg_set=1;
     }
@@ -553,7 +548,7 @@ arguments:
         }
         fprintf(out, "LOAD R%d 0 ; %s end\n", r, c_name);
         fprintf(out, "OUTI R%d 0x%04x\n", r, ad+i);
-        fprintf(out, "LOAD R%d 0x%04x ; %s\n", r, ad, $3);
+        fprintf(out, "LOAD R%d 0x%04x ; loading %s\n", r, ad, vars[varindex].name);
         fprintf(out, "OUTI R%d 0x%04x ; argument %d\n", r, func[tmp].arg[Arg_set].addr, Arg_set);
         Arg_set+=1;
     }
@@ -660,7 +655,7 @@ const_list:
     }
     | const_list COMMA NUMBER {
         int len = snprintf(NULL, 0, "%d", $3);
-        char *str = malloc(1 + len + 1);
+        char *str = malloc(strlen($1) + 2 + len);
         sprintf(str, "%s,%d", $1, $3);
         free($1); 
         $$ = str;
@@ -675,24 +670,32 @@ declaration:
         int type = vars[varindex].type;
         int r = new_tmp();
         int r2 = new_tmp();
-        int num_list[strlen($4)];
-        convert_str_intlist($4,num_list);
+        int *num_list = malloc(sizeof(int)*VarSpace);
+        int len_list;
+        len_list = convert_str_intlist($4, num_list);
         if(type==LONG_PTR_TYPE || type==LONG_TYPE || type==UNSIGNED_LONG_PTR_TYPE || type==UNSIGNED_LONG_TYPE){
-            if(intstrlen(num_list)>vars[varindex].reg)yyerror("Array size mismatch");
-            for(int i=0; i<intstrlen(num_list)*2; i+=2) {
+            if(len_list>vars[varindex].reg){
+                yyerror("Array size mismatch");
+                printf("Array size=%d Reg size=%d\n",len_list, vars[varindex].reg);
+            }
+            for(int i=0; i<len_list*2; i+=2) {
                 fprintf(out, "LOAD R%d %d ; %s[%d] <- %d\n", r,num_list[i>>1]&0xffff, vars[varindex].name, i, num_list[i>>1]);
                 fprintf(out, "OUTI R%d 0x%04x\n",r, ad+i);
                 fprintf(out, "LOAD R%d %d", r,(num_list[i]>>16)&0xffff);
                 fprintf(out, "OUTI R%d 0x%04x\n",r, ad+i+1);
             }
         }else{
-            if(intstrlen(num_list)>vars[varindex].reg)yyerror("Array size mismatch");
-            for(int i=0; i<intstrlen(num_list); i++) {
+            if(len_list>vars[varindex].reg){
+                printf("Array size=%d Reg size=%d\n",len_list, vars[varindex].reg);
+                yyerror("Array size mismatch");
+            }
+            for(int i=0; i<len_list; i++) {
                 fprintf(out, "LOAD R%d %d ; %s[%d] <- %d\n", r,num_list[i]&0xffff, vars[varindex].name, i, num_list[i]);
                 fprintf(out, "OUTI R%d 0x%04x\n",r, ad+i);
             }
         }
         free($4);
+        free(num_list);
     }
     | var_type_list ASSIGN STRING
     {
@@ -700,10 +703,14 @@ declaration:
         int ad = vars[varindex].addr;
         int r = new_tmp();
         if(strlen($3)>vars[varindex].reg)yyerror("Array size mismatch");
-        for(int i=0; i<strlen($3); i++) {
+        int i=0;
+        for(i=0; i<strlen($3); i++) {
             fprintf(out, "LOAD R%d %d ; %s[%d] <- %d\n", r,$3[i], vars[varindex].name, i, $3[i]);
             fprintf(out, "OUTI R%d 0x%04x\n",r, ad+i);
         }
+        int abs_max_adr = (i>(vars[varindex].reg-1))?(vars[varindex].reg-1+ad):(ad+i);
+        fprintf(out, "LOAD R%d 0 ; %s[%d] <- 0\n", r, vars[varindex].name, abs_max_adr-ad);
+        fprintf(out, "OUTI R%d 0x%04x\n", r, abs_max_adr);
     }
     | var_type ASSIGN expression
     {
@@ -1133,7 +1140,7 @@ simple_expression :
     {
         int r = new_tmp();
         int ad = get_var_addr($2,func_pipe);
-        fprintf(out, "LOAD R%d 0x%04x ; lecture &%s -> %d\n", r, ad, $2, r);
+        fprintf(out, "LOAD R%d 0x%04x ; lecture &%s -> R%d\n", r, ad, $2, r);
         $$ = r;
         free($2);
     }
@@ -1167,15 +1174,7 @@ simple_expression :
     ;
 
 condition:
-    JMCARRY
-    {
-        TMP_pipe =  read_label();
-        fprintf(out,"JMC if_%04d\n", TMP_pipe);      // Si égal (0), aller à if
-        fprintf(out,"JMP else_if_%04d\n", TMP_pipe);   // Sinon, aller à end_if
-        fprintf(out,"if_%04d :\n", TMP_pipe);
-        $$ = TMP_pipe;
-    }
-    | expression EQ expression
+    expression EQ expression
     {
         int r = new_tmp();
         TMP_pipe =  read_label();
@@ -1199,7 +1198,7 @@ condition:
         int r = new_tmp();
         TMP_pipe = read_label();
         fprintf(out,"SUB R%d R%d R%d ; condition <=\n", r, $3, $1);
-        fprintf(out,"JMC else_if_%04d\n", TMP_pipe);       // Si négatif, aller à if
+        fprintf(out,"JMN else_if_%04d\n", TMP_pipe);       // Si négatif, aller à if
         fprintf(out,"if_%04d :\n", TMP_pipe);   // Si positif, aller à end_if
         $$ = TMP_pipe;
     }
@@ -1208,7 +1207,7 @@ condition:
         int r = new_tmp();
         TMP_pipe = read_label();
         fprintf(out,"SUB R%d R%d R%d ; condition >=\n", r, $1, $3);  // CORRIGÉ: $1 - $3
-        fprintf(out,"JMC else_if_%04d\n", TMP_pipe);   // Si négatif, aller à end_if
+        fprintf(out,"JMN else_if_%04d\n", TMP_pipe);   // Si négatif, aller à end_if
         fprintf(out,"if_%04d :\n", TMP_pipe);       // Si positif, aller à if
         $$ = TMP_pipe;
     }
@@ -1217,7 +1216,7 @@ condition:
         int r = new_tmp();
         TMP_pipe = read_label();
         fprintf(out,"SUB R%d R%d R%d ; condition <\n", r, $1, $3);
-        fprintf(out,"JMC if_%04d\n", TMP_pipe);       // Si négatif, aller à if
+        fprintf(out,"JMN if_%04d\n", TMP_pipe);       // Si négatif, aller à if
         fprintf(out,"JMP else_if_%04d\n", TMP_pipe);   // Sinon (>=0), aller à end_if
         fprintf(out,"if_%04d :\n", TMP_pipe);
         $$ = TMP_pipe;
@@ -1227,7 +1226,7 @@ condition:
         int r = new_tmp();
         TMP_pipe = read_label();
         fprintf(out,"SUB R%d R%d R%d ; condition >\n", r, $3, $1);   // CORRIGÉ: $1 - $3
-        fprintf(out,"JMC if_%04d\n", TMP_pipe);   // Si négatif, aller à end_if
+        fprintf(out,"JMN if_%04d\n", TMP_pipe);   // Si négatif, aller à end_if
         fprintf(out,"JMP else_if_%04d\n", TMP_pipe);       // Si positif, aller à if
         fprintf(out,"if_%04d :\n", TMP_pipe);
         $$ = TMP_pipe;
