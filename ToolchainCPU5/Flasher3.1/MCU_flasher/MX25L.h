@@ -9,10 +9,10 @@
 #define ROM_SIZE 262144
 
 // You can use every GPIO, it use bitbanging and not the HW SPI
-#define SCLK 16   // Serial Clock
-#define SO 2     // Serial Output (MISO)
-#define SI 15     // Serial Input (MOSI)
-#define CSn 4    // Chip Select
+#define SCLK A0   // Serial Clock
+#define SO A3     // Serial Output (MISO)
+#define SI A2     // Serial Input (MOSI)
+#define CSn A1    // Chip Select
 
 // Instructions for  MX25L3233F
 #define WRITE_ENABLE 0x06

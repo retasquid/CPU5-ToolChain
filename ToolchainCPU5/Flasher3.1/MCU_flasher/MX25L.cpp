@@ -157,15 +157,14 @@ void readID(uint8_t *id) {
 
 void EEPROMread(uint32_t address, uint8_t *buffer, uint16_t length) {
   digitalWrite(CSn, LOW);
-  sendByte(READ_DATA);
-  sendByte((address >> 16) & 0xFF);  // MSB
-  sendByte((address >> 8) & 0xFF);   // Milieu
-  sendByte(address & 0xFF);          // LSB
-  
+  sendByte(FAST_READ);
+  sendByte((address >> 16) & 0xFF);
+  sendByte((address >> 8)  & 0xFF);
+  sendByte( address        & 0xFF);
+  sendByte(0xFF);
   for(uint16_t i = 0; i < length; i++) {
     buffer[i] = receiveByte();
   }
-  
   digitalWrite(CSn, HIGH);
 }
 
@@ -185,7 +184,7 @@ void EEPROMwrite(uint32_t address, const uint8_t *buffer, uint16_t length) {
   sendByte(address & 0xFF);          // LSB
   
   for(uint16_t i = 0; i < length; i++) {
-    sendByte(pgm_read_byte(buffer+i));
+    sendByte(buffer[i]);
   }
   
   digitalWrite(CSn, HIGH);
@@ -220,9 +219,7 @@ void sendByte(uint8_t byte) {
   for(int i = 7; i >= 0; i--) {
     digitalWrite(SI, (byte >> i) & 0x01);
     digitalWrite(SCLK, HIGH);
-    delayMicroseconds(0);
     digitalWrite(SCLK, LOW);
-    delayMicroseconds(0);
   }
 }
 
@@ -231,10 +228,8 @@ uint8_t receiveByte() {
   
   for(int i = 7; i >= 0; i--) {
     digitalWrite(SCLK, HIGH);
-    delayMicroseconds(0);
     byte |= (digitalRead(SO) << i);
     digitalWrite(SCLK, LOW);
-    delayMicroseconds(0);
   }
   
   return byte;
