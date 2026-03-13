@@ -2,11 +2,11 @@
 The complet Tool chain for CPU5 include C compiler, ASM compiler and UART flasher
 
 ## How to use 
-Modifie your flash pinour for your MCU and flash the firmware located at :
+Modifie your flash pinout for your MCU and flash the firmware located at :
 
 ToolchainCPU5/lasher3.1/MCU_flasher/MCU_flasher.ino
 
-*This programe has been tested only on ESP32
+*This programe has been tested on ESP32 and Arduino uno but is compatible with every arduino compatible microcontrollers
 
 Create a main.c near the toolchain file.
 
