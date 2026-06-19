@@ -8,11 +8,12 @@
 //Microcontroller ROM size in bits
 #define ROM_SIZE 262144
 
-// You can use every GPIO, it use bitbanging and not the HW SPI
-#define SCLK 7   // Serial Clock
-#define CSn 5    // Chip Select
-#define SO 6     // Serial Output (MISO)
-#define SI 8     // Serial Input (MOSI)
+#define SCLK A0
+#define CSn  A1
+#define SIO0 A2
+#define SIO1 A3
+#define SIO2 A4
+#define SIO3 A5
 
 // Instructions for  MX25L3233F
 #define WRITE_ENABLE 0x06
@@ -22,6 +23,8 @@
 #define WRITE_STATUS_REG 0x01
 #define READ_DATA 0x03
 #define FAST_READ 0x0B
+#define FOUR_READ 0xEB
+#define DUAL_READ 0x3B
 #define PAGE_PROGRAM 0x02
 #define SECTOR_ERASE 0x20        // 4KB
 #define BLOCK_ERASE_32K 0x52     // 32KB
@@ -30,6 +33,7 @@
 #define READ_ID 0x9F
 #define RESET_ENABLE 0x66
 #define RESET_DEVICE 0x99
+#define RESET_ENABLE 0x66
 
 
 // Afficher des données en hexadécimal avec formatage amélioré
@@ -57,13 +61,19 @@ void readID(uint8_t *id);
 
 void EEPROMread(uint32_t address, uint8_t *buffer, uint16_t length);
 
+void EEPROMQread(uint32_t address, uint8_t *buffer, uint16_t length);
+
 void EEPROMwrite(uint32_t address, const uint8_t *buffer, uint16_t length);
 
 // Effacer un secteur (4KB)
 void sectorErase(uint32_t address);
-
+// Communication serie avec la Flash
 void sendByte(uint8_t byte);
 
+void sendQByte(uint8_t byte);
+
 uint8_t receiveByte();
+
+uint8_t receiveQByte();
 
 #endif

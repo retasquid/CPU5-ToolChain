@@ -10,7 +10,7 @@ int atoi(char* str_atoi){
         atoi_tmp = str_atoi[atoi_ptr];
         if(atoi_tmp<=47)return atoi_int;
         if(atoi_tmp>=58)return atoi_int;
-        atoi_int = (atoi_int<<3) + (atoi_int<<1) + atoi_tmp-'0';
+        atoi_int = (atoi_int<<3) + (atoi_int<<1) + (atoi_tmp-'0');
         atoi_ptr++;
     }
     return atoi_int;

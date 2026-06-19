@@ -1,8 +1,9 @@
 #include "MX25L.h"
 #include "transfert.h"
 
-#define HOLDn A5     // Serial Input (MOSI)
-#define WPn A4    // Chip Select
+#define HOLDn A3     // Serial Input (MOSI)
+#define WPn A0    // Chip Select
+
 
 void setup() {
   pinMode(CSn, OUTPUT);

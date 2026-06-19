@@ -19,7 +19,7 @@ def load_code_module(path):
 # ====================
 
 
-PORT = "/dev/ttyUSB0"
+PORT = "COM5"
 
 GET_ID     = 0x30
 GET_PAGE   = 0x31
@@ -27,8 +27,9 @@ SET_PAGE   = 0x32
 SET_ADDR   = 0x33
 SEC_ERASE  = 0x34
 
-VERBOSITY  = 0
+VERBOSITY  = 1
 Start_Adr  = 0x00001000
+Vector_Adr  = 0x0003FFE0
 
 # ====================
 #  Utility Functions
@@ -68,9 +69,11 @@ def getId(ser):
     ack = ser.read(1)
     if ack == b'\x15':
         print("ERROR: GET_ID -> NACK")
+        exit(1)
         return None
     if ack != b'\x06':
         print("ERROR: GET_ID -> Timeout / Invalid ACK :", ack)
+        exit(1)
         return None
 
     data = read_exact(ser, 3)
@@ -98,8 +101,6 @@ def setAddr(ser, addr):
         return None
 
     ser.write(addr.to_bytes(4, "big"))
-    if VERBOSITY:
-        print(f"Adresse envoyée : 0x{addr:08X}")
 
     return True
 
@@ -179,14 +180,16 @@ def writeMultiplePages(ser, address, data, length):
 
     # erase first sector
     secErase(ser, address)
-
+    sleep(1)
+    last_sector = address & ~0xFFFF
     while written < length:
         curr = address + written
 
         # check for new sector
-        if (curr & ~0xFFFF) != (address & ~0xFFFF):
+        if (curr & ~0xFFFF) != last_sector:
+            last_sector = curr & ~0xFFFF
             secErase(ser, curr)
-
+            sleep(1)
         page_offset = curr & 0xFF
         space = 256 - page_offset
         chunk = min(space, length - written)
@@ -195,10 +198,9 @@ def writeMultiplePages(ser, address, data, length):
             print(f"  Page: {chunk} bytes @ 0x{curr:08X}")
 
         setAddr(ser, curr)
-
+        sleep(0.1)
         src_chunk = data[written:written + chunk].ljust(256, b'\x00')
         setPage(ser, src_chunk)
-
         # verification
         read_back = getPage(ser)
 
@@ -236,6 +238,7 @@ def main():
     prog_module = load_code_module(prog_path)
 
     code = prog_module.code
+    vector_table = prog_module.vector_table
 
     while(1):
         try:
@@ -253,11 +256,13 @@ def main():
 
 
     print("Port selected :", ser.portstr)
-    sleep(0.1)
+    sleep(2)
     
     getId(ser)
+    sleep(1)
     writeMultiplePages(ser, Start_Adr, code, len(code))
-    sleep(0.1)
+    # sleep(3)
+    # writeMultiplePages(ser, Vector_Adr, vector_table, len(vector_table))
 
     print("Flashing finished.")
     ser.close()

@@ -1,11 +1,4 @@
 #include"transfert.h"
-#include <Wire.h> 
-
-#define GET_ID   0x30
-#define GET_PAGE 0x31
-#define SET_PAGE 0x32
-#define SET_ADDR 0x33
-#define SEC_ERASE 0x34
 
 uint8_t data_buf[256];
 uint32_t pageAddr  = WRITE_ADDRESS;
@@ -61,7 +54,7 @@ void secErase(){
 }
 
 void getPage(uint8_t *buffer){
-  EEPROMread(pageAddr, buffer, 256);
+  EEPROMQread(pageAddr, buffer, 256);
   sendCmdData(buffer, 256);
 }
 
@@ -70,9 +63,8 @@ void setPage(uint8_t *buffer){
   EEPROMwrite(pageAddr, buffer, 256);
 }
 
-void  execCmd(){
-  uint8_t cmd = decodeCmd();
-  switch(cmd){
+void execCmd(){
+  switch(decodeCmd()){
     case GET_ID:
       getId(data_buf);
       break;
@@ -92,5 +84,4 @@ void  execCmd(){
       Serial.write(0x15); //send NAK, no commande
       break;
   }
-
 }

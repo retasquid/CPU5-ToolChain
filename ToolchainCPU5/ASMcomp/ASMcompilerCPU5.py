@@ -8,7 +8,7 @@ def main():
                 "AND", "ANDI", "NAND", "NANDI", "OR", "ORI", "XOR", "XORI", 
             "JMP", "IN", "OUT", "OUTI", "CALL", "RET", "INI", "ADDC", "SUBC"]
     
-    JUMPS = ["JMP", "JM0", "JMC", "JMN", "JMV", "JMS"]
+    JUMPS = ["JMP", "JM0", "JMC", "JMN", "JMV"]
 
     REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "R14", "SP"]
     SHORTCUTS = {"RAM0":16384, "SP0":32767, "GPI0":0, "GPI1":1, "GPO0":2, "GPO1":3, "SPI":4, "CONFSPI":5, "UART":6,"BAUDL":7, "BAUDH":8, "STATUS":9, "CONFINT":10}
@@ -235,7 +235,7 @@ def main():
             elif words[0] == "RET":
                 instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 12
             elif words[0] == "CALL":
-                instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 10+"10"
+                instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 10+"11"
             else :
                 print(f"Error: unrecognized instruction but found : {line} > On line {pc+1+pc_offset}")
                 sys.exit(1)
@@ -284,7 +284,7 @@ def main():
             
             for i in range(0,8):
                 if INTERRUPTS[i] in labels :
-                    byte1 = labels[INTERRUPTS[i]]>>8
+                    byte1 = (labels[INTERRUPTS[i]]>>8)-4 # -4 is for the sector protection offset
                     byte2 = labels[INTERRUPTS[i]]&0xFF
                     if i==7 :
                         output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"\n};\n")
@@ -300,7 +300,7 @@ def main():
             
             for i in range(0,8):
                 if INTERRUPTS[i] in labels :
-                    byte1 = labels[INTERRUPTS[i]]>>8
+                    byte1 = (labels[INTERRUPTS[i]]>>8)-4 # -4 is for the sector protection offset
                     byte2 = labels[INTERRUPTS[i]]&0xFF
                     if i==7 :
                         output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"\n])\n")

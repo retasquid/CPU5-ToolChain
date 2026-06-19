@@ -120,11 +120,12 @@ void writeEnable() {
   digitalWrite(CSn, LOW);
   sendByte(WRITE_ENABLE);
   digitalWrite(CSn, HIGH);
-  
   // Vérifier que le WEL bit est mis à 1
   uint8_t status = readStatus();
   if(!(status & 0x02)) {
-    Serial.println("ERREUR: Write Enable a échoué!");
+    Serial.write(0x15); //send NAK, no commande
+    Serial.print("ERREUR: Write Enable a échoué : ");
+    Serial.println(status);
   }
 }
 
